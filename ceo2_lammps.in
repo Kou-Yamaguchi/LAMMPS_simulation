@@ -1,0 +1,46 @@
+# ---------------- Initialization ----------------
+units           metal
+dimension       3
+boundary        p p p
+atom_style      charge
+
+# ---------------- Atom Definition ----------------
+lattice         fcc 5.411  # CeO2の格子定数（例）
+region          box block 0 10 0 10 0 3
+create_box      2 box
+create_atoms    1 box basis 1 1 basis 2 2
+
+# ---------------- Potential ----------------
+pair_style      buck/coul/long 12.0
+pair_coeff      1 1 0.0 1.0 0.0      # Ce-Ce
+pair_coeff      1 2 1000.0 0.3 0.0   # Ce-O
+pair_coeff      2 2 500.0 0.3 0.0    # O-O
+kspace_style    ewald 1.0e-4
+
+# ---------------- Settings ----------------
+mass            1 140.116  # Ce
+mass            2 15.9994   # O
+group           ce_atoms type 1
+group           o_atoms type 2
+set group       ce_atoms charge 3.0
+set group       o_atoms charge -2.0
+
+# ---------------- Compute MSD ----------------
+compute msd_ce ce_atoms msd
+compute msd_o o_atoms msd
+
+# ---------------- Dump File Output ----------------
+dump            1 all custom 100 dump.ceo2 id type x y z vx vy vz
+dump_modify     1 sort id
+fix 2 ce_atoms ave/time 100 1 100 c_msd_ce[4] file msd_ce.dat
+fix 3 o_atoms ave/time 100 1 100 c_msd_o[4] file msd_o.dat
+
+# ---------------- Simulation Parameters ----------------
+velocity        all create 1000.0 12345 mom yes rot yes
+fix             1 all nvt temp 1000.0 1000.0 0.1
+thermo          100
+thermo_style    custom step temp press pe
+
+# ---------------- Run ----------------
+timestep        0.001
+run             10000
